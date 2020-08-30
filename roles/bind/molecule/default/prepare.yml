@@ -1,0 +1,9 @@
+---
+- name: Prepare
+  hosts: all
+  gather_facts: no
+  tasks:
+    - name: Install systemd
+      dnf:
+        name: systemd
+        state: latest

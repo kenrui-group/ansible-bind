@@ -1,0 +1,7 @@
+---
+- name: Verify
+  hosts: all
+  tasks:
+    - name: Run Test Role in Molecule
+      include_role:
+        name: "test_bind"

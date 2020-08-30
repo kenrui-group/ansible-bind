@@ -1,0 +1,39 @@
+; SOA Record
+$TTL 1H
+@       SOA  ns1.{{ domain }}. root.ns1.{{ domain }}. (
+                                    22         ; serial
+                                    10800      ; refresh (3 hours)
+                                    3600       ; retry (1 hour)
+                                    604800     ; expire (1 week)
+                                    3600)      ; minimum (1 hour)
+
+; CAA Records
+{{ "{:<15} {:<9} {:<7} {:<8} {:<2} {:<10} {}".format(domain + ".", "3600", "IN", "CAA", "0", "issue", "\";\"") }}
+{{ "{:<15} {:<9} {:<7} {:<8} {:<2} {:<10} {}".format(domain + ".", "3600", "IN", "CAA", "0", "issuewild", "\"letsencrypt.org\"") }}
+{{ "{:<15} {:<9} {:<7} {:<8} {:<2} {:<10} {}".format(domain + ".", "3600", "IN", "CAA", "0", "iodef", "\"mailto:support@" + domain + "\"") }}
+
+; A Records
+{#
+     Reference following for excellent guide to Jinja2 template
+     https://ttl255.com/jinja2-tutorial-part-3-whitespace-control/
+#}
+{%  for item, value in zone_records.items() %}
+{%      set ip_full = ip_reverse_zone_file_prefix + "." + value.hostip %}
+{{      "{:<15} {:<9} {:<7} {:<8} {}".format(value.hostname, "600", "IN", "A", ip_full) }}
+{%  endfor %}
+
+{#
+    ; CNAME Records
+    www             3600    IN      CNAME   prod
+#}
+
+; MX Records
+@               3600    IN      MX      1       ASPMX.L.GOOGLE.COM.
+@               3600    IN      MX      5       ALT1.ASPMX.L.GOOGLE.COM.
+@               3600    IN      MX      5       ALT2.ASPMX.L.GOOGLE.COM.
+@               3600    IN      MX      10      ALT3.ASPMX.L.GOOGLE.COM.
+@               3600    IN      MX      10      ALT4.ASPMX.L.GOOGLE.COM.
+
+; NS Records
+@               3600    IN      NS      ns1
+@               3600    IN      NS      ns2

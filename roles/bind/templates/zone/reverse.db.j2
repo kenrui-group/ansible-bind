@@ -1,0 +1,22 @@
+$ORIGIN .
+$TTL 3600       ; 1 hour
+{{ ip_reverse }}.IN-ADDR.ARPA   IN SOA  ns1.{{ domain }}. root.ns1.{{ domain }}. (
+                                    15         ; serial
+                                    10800      ; refresh (3 hours)
+                                    3600       ; retry (1 hour)
+                                    604800     ; expire (1 week)
+                                    3600       ; minimum (1 hour)
+                                )
+{#                        NS      ns1.{{ domain }}. #}
+{#                        NS      ns2.{{ domain }}. #}
+{{ "{:<24} {:<8} {}".format("", "NS", "ns1" + "." + domain + ".") }}
+{{ "{:<24} {:<8} {}".format("", "NS", "ns2" + "." + domain + ".") }}
+$ORIGIN {{ ip_reverse }}.IN-ADDR.ARPA.
+{#
+     Reference following for excellent guide to Jinja2 template
+     https://ttl255.com/jinja2-tutorial-part-3-whitespace-control/
+#}
+{%  for item, value in zone_records.items() %}
+{%      set fqdn = value.hostname + "." + domain + "."  %}
+{{      "{:<24} {:<8} {}".format(value.hostip, "PTR", fqdn) }}
+{% endfor %}

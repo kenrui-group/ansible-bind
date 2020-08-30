@@ -1,0 +1,9 @@
+---
+- name: Install / Update BIND
+  hosts: servers
+  become: yes
+  become_method: sudo
+  gather_facts: no
+
+  roles:
+    - bind

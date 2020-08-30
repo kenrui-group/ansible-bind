@@ -1,0 +1,46 @@
+---
+dependency:
+  name: galaxy
+driver:
+  name: docker
+lint:
+  ansible-lint
+platforms:
+  - name: dns-master
+    groups:
+      - eastcoast
+    children:
+      - servers
+    image: docker.io/pycontribs/centos:8
+    pre_build_image: false
+    command: /sbin/init
+    tmpfs:
+      - /run
+      - /tmp
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:ro
+    privileged: true
+  - name: dns-slave
+    groups:
+      - westcoast
+    children:
+      - servers
+    image: docker.io/pycontribs/centos:8
+    pre_build_image: false
+    command: /sbin/init
+    tmpfs:
+      - /run
+      - /tmp
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:ro
+    privileged: true
+provisioner:
+  name: ansible
+  inventory:
+    host_vars:
+      dns-master:
+        type: master
+      dns-slave:
+        type: slave
+verifier:
+  name: ansible

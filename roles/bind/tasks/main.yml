@@ -1,0 +1,201 @@
+---
+- name: Set hostname
+  block:
+    - name: Set hostname for master
+      hostname:
+        name: "ns1.{{ domain }}"
+      when: type == "master"
+
+    - name: Set hostname for slave
+      hostname:
+        name: "ns2.{{ domain }}"
+      when: type == "slave"
+  tags: sethostname
+
+- name: Check latest serial number
+  block:
+    - name: Check if BIND is running
+      service_facts:
+
+    - name: Get serial number from server if it's running
+      shell:
+        cmd: "dig @localhost +multi soa '{{ domain }}' | grep 'serial' | sed -En 's/\\s*([0-9]+)\\s.*/\\1/p'"
+      register: serial
+      when:
+        - ansible_facts.services['named.service'] is defined
+        - ansible_facts.services['named.service'].state == "running"
+
+    - name: Print serial numbers
+      debug:
+        msg: "Serial number on {{ inventory_hostname }}: {{ serial.stdout }}"
+      when: serial.stdout is defined
+
+    - name: Get serial number from any server if it's not running locally
+      shell:
+        cmd: "dig +multi soa '{{ domain }}' | grep 'serial' | sed -En 's/\\s*([0-9]+)\\s.*/\\1/p'"
+      register: serial
+      when: (ansible_facts.services['named.service'] is not defined) or
+            (ansible_facts.services['named.service'].state != "running")
+
+    - name: Print serial number
+      debug:
+        msg: "{{ serial.stdout }}"
+      when: serial.stdout is defined
+  tags: checkserial
+
+- name: Install or upgrade to latest stable version of BIND
+  dnf:
+    name: "bind-{{ bindversion }}*"
+    state: latest
+  tags: installbind
+
+- name: Generate rndc key
+  block:
+    - name: Generate key
+      command:
+        cmd: rndc-confgen -a -c /etc/rndc.key
+
+    - name: Set ownership
+      file:
+        path: "/etc/rndc.key"
+        owner: root
+        group: named
+        mode: 0640
+
+    - name: Copy rndc configuration file
+      copy:
+        src: "rndc.conf"
+        dest: "/etc/"
+        owner: named
+        group: named
+        mode: '0640'
+  tags: generate-rndc-key
+
+- name: Configure BIND
+  block:
+    - name: Copy configuration file
+      template:
+        src: "named.conf.j2"
+        dest: "/etc/named.conf"
+        owner: named
+        group: named
+        mode: '0600'
+
+    - name: Validate configuration file
+      command:
+        cmd: named-checkconf /etc/named.conf
+
+    - name: Create Zone File Directory
+      file:
+        path: "/var/named/{{ type }}"
+        state: directory
+        owner: named
+        group: named
+        mode: '0700'
+
+    - name: Copy Forward File
+      template:
+        src: "zone/forward.db.j2"
+        dest: "/var/named/{{ type }}/{{ domain }}.db"
+        owner: named
+        group: named
+        mode: '0600'
+        trim_blocks: yes
+        lstrip_blocks: yes
+
+    - name: Copy Reverse File
+      template:
+        src: "zone/reverse.db.j2"
+        dest: "/var/named/{{ type }}/{{ ip_reverse_zone_file_prefix }}.db"
+        owner: named
+        group: named
+        mode: '0600'
+        trim_blocks: yes
+        lstrip_blocks: yes
+
+    - name: Validate Zone file
+      command:
+        cmd: "named-checkzone {{ domain }} /var/named/{{ type }}/{{ domain }}.db"
+
+    - name: Disable IPv6
+      lineinfile:
+        path: /etc/sysconfig/named
+        line: 'OPTIONS="-4"'
+        state: present
+  tags: setupzone
+
+- name: Update firewalld
+  block:
+    - name: Permit UDP/53
+      command:
+        cmd: firewall-cmd --zone=public --add-port=53/udp --permanent
+
+    - name: Permit TCP/53
+      command:
+        cmd: firewall-cmd --zone=public --add-port=53/tcp --permanent
+
+    - name: Reload Rule
+      command:
+        cmd: firewall-cmd --reload
+  tags: permit-port53
+
+- name: Enable / Restart / Reload
+  block:
+#  - name: Put SELinux in permissive mode, logging actions that would be blocked.
+#    selinux:
+#      policy: targeted
+#      state: permissive
+
+  - name: Enable BIND
+    systemd:
+      name: named
+      enabled: yes
+      masked: no
+
+  - name: Reload BIND
+    systemd:
+      name: named
+      state: reloaded
+
+  - name: Restart BIND
+    systemd:
+      name: named
+      state: restarted
+
+#  - name: Generate SELinux Policy
+#    shell:
+#      cmd: "ausearch -c 'systemd' --raw | audit2allow -M my-systemd"
+#
+#  - name: Apply SELinux Policy
+#    shell:
+#      cmd: "semodule -X 300 -i my-systemd.pp"
+#
+#  - name: Generate SELinux Policy
+#    shell:
+#      cmd: "ausearch -c 'isc-worker0000' --raw | audit2allow -M my-iscworker0000"
+#
+#  - name: Apply SELinux Policy
+#    shell:
+#      cmd: "semodule -X 300 -i my-iscworker0000.pp"
+#
+#  - name: Put SELinux in permissive mode, logging actions that would be blocked.
+#    selinux:
+#      policy: targeted
+#      state: enforcing
+  tags: startbind
+
+- name: Test BIND is properly setup and servicing
+  block:
+    - name: Get IP of site
+      command:
+        cmd: "dig @localhost +short {{ zone_records.www.hostname + \".\" + domain }}"
+      register: ip
+
+    - name: Assert ip returned is valid
+      assert:
+        that:
+          - ip.stdout == ip_reverse_zone_file_prefix + "." + zone_records.www.hostip
+        fail_msg: "ip.stdout: {{ ip.stdout }}"
+      when: ip.stdout_lines is defined
+  tags: test
+...

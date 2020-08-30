@@ -1,0 +1,9 @@
+[servers:children]
+eastcoast
+westcoast
+
+[eastcoast]
+10.0.1.1 type=master
+
+[westcoast]
+10.0.1.2 type=slave
