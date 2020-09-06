@@ -121,6 +121,13 @@ We will use genie and the following install guide is more comprehensive than the
 sudo genie -v -i
 sudo genie -v -s
 ```
+### Connect Docker Bridge Network To Outside
+This is assuming the physical NIC to the Internet is eth0.  If unsure use 'ifconfig' to check.
+```bash
+apt-get install bridge-utils
+apt-get install net-tools
+brctl addif docker0 eth0
+```
 ## Run Molecule
 Following assumes we are within the genie bottle.  Otherwise sudo is required when running molecule.
 ### Setup Environment
@@ -134,6 +141,7 @@ MOLECULE_PATH="/mnt/c/Users/${USER_NAME}/IdeaProjects/${PROJECT_NAME}/roles/${RO
 MOLECULE_ROLE_PATH="${MOLECULE_PATH}/default/roles/test_${ROLE_NAME}"
 ```
 ### Create Docker Instance
+Note it is necessary to run ‘molecule  destroy’ first if Molecule has created containers in the past, even if the containers have been removed using Docker commands.
 ```bash
 cd ${ROLE_PATH}
 molecule create

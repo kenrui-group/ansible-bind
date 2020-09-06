@@ -1,0 +1,31 @@
+---
+- name: Given role 'bind' has been applied
+  block:
+    - name: When requesting all zone records configured
+      command:
+        cmd: "dig @localhost +short {{ item.value.hostname + \".\" + domain }}"
+      loop: "{{ lookup('dict', zone_records) }}"
+      register: dig_results
+      changed_when: false
+
+    - name: Assert correct number of records are available
+      assert:
+        that:
+          - dig_results.results | length == zone_records | length
+      when: dig_results.results | length > 0
+
+    - name: Assert all returned IPs match configured zone records
+      assert:
+        that:
+          - item.0.stdout == ip_reverse_zone_file_prefix + "." + item.2.hostip
+        success_msg: "{{ item.2.hostname + \".\" + domain }} returned correct IP."
+        fail_msg: "{{ item.2.hostname + \".\" + domain }} should return {{ ip_reverse_zone_file_prefix + \".\" + item.2.hostip }} but returned {{ item.0.stdout }}."
+      with_together:
+        - "{{ dig_results.results }}"
+        - "{{ zone_records.items() | list }}"
+      loop_control:
+        label:
+          - "{{ item.0.stdout }}"
+          - "{{ item.2.hostip }}"
+      when: dig_results.results | length > 0
+...

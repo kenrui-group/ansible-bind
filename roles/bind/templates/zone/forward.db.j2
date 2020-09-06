@@ -1,7 +1,7 @@
 ; SOA Record
 $TTL 1H
 @       SOA  ns1.{{ domain }}. root.ns1.{{ domain }}. (
-                                    22         ; serial
+                                    {{ serial_new }}         ; serial
                                     10800      ; refresh (3 hours)
                                     3600       ; retry (1 hour)
                                     604800     ; expire (1 week)

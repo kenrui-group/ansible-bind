@@ -1,0 +1,46 @@
+---
+- name: Set new serial number
+  block:
+    - name: Get UTC date
+      command: date '+%Y%m%d' -u
+      delegate_to: localhost
+      register: utcdate
+
+    - debug:
+        var: utcdate.stdout
+
+    - debug:
+        var: serial_yymmdd
+
+    - name: Set serial count (non first change of day, original serial < 9)
+      set_fact:
+        serial_count_new_temp: "{{ serial_count | int + 1 }}"
+      when:
+        - utcdate.stdout == serial_yymmdd
+        - serial_count | int < 9
+
+    - name: Set serial count (non first change of day, original serial < 9)
+      set_fact:
+        serial_count_new: "{{ \"0\" + serial_count_new_temp | string }}"
+      when:
+        - utcdate.stdout == serial_yymmdd
+        - serial_count | int < 9
+
+    - name: Set serial count (non first change of day, original serial >= 9)
+      set_fact:
+        serial_count_new: "{{ serial_count | int + 1 }}"
+      when:
+        - utcdate.stdout == serial_yymmdd
+        - serial_count | int >= 9
+
+    - name: Formulate new serial (non first change of day)
+      set_fact:
+        serial_new: "{{ utcdate.stdout | string + serial_count_new | string }}"
+      when: utcdate.stdout == serial_yymmdd
+
+    - name: Formulate new serial (first change of day)
+      set_fact:
+        serial_new: "{{ utcdate.stdout | string + \"01\" }}"
+      when: utcdate.stdout != serial_yymmdd
+  tags: setserial
+...

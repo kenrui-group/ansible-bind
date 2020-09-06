@@ -1,7 +1,7 @@
 $ORIGIN .
 $TTL 3600       ; 1 hour
 {{ ip_reverse }}.IN-ADDR.ARPA   IN SOA  ns1.{{ domain }}. root.ns1.{{ domain }}. (
-                                    15         ; serial
+                                    {{ serial_new }}         ; serial
                                     10800      ; refresh (3 hours)
                                     3600       ; retry (1 hour)
                                     604800     ; expire (1 week)

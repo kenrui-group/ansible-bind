@@ -1,0 +1,71 @@
+---
+- name: Given today's date
+  command: date '+%Y%m%d' -u
+  delegate_to: localhost
+  register: today_yymmdd
+  changed_when: false
+
+- name: Test first update of day
+  block:
+    - name: When serial was from previous date
+      set_fact:
+        serial_yymmdd: "{{ today_yymmdd.stdout | int - 1 }}"
+        serial_count: "01"
+
+    - name: Do first update of day
+      include_tasks: ../../../../../tasks/setserial.yml
+
+    - name: Assert serial is changed to today's date and as first update
+      assert:
+        that:
+          - serial_new == today_yymmdd.stdout | string + "01"
+  tags: testfirstupdate
+
+- name: Test second update of day
+  block:
+    - name: When serial was from today and was updated once already
+      set_fact:
+        serial_yymmdd: "{{ today_yymmdd.stdout }}"
+        serial_count: "01"
+
+    - name: Do second update of day
+      include_tasks: ../../../../../tasks/setserial.yml
+
+    - name: Assert serial is still with today's date and as second update
+      assert:
+        that:
+          - serial_new == today_yymmdd.stdout | string + "02"
+  tags: testsecondupdate
+
+- name: Test ninth update of day
+  block:
+    - name: When serial was from today and was updated eight times already
+      set_fact:
+        serial_yymmdd: "{{ today_yymmdd.stdout }}"
+        serial_count: "08"
+
+    - name: Do ninth update of day
+      include_tasks: ../../../../../tasks/setserial.yml
+
+    - name: Assert serial is still with today's date and as ninth update
+      assert:
+        that:
+          - serial_new == today_yymmdd.stdout | string + "09"
+  tags: testninthupdate
+
+- name: Test tenth update of day
+  block:
+    - name: When serial was from today and was updated nine times already
+      set_fact:
+        serial_yymmdd: "{{ today_yymmdd.stdout }}"
+        serial_count: "09"
+
+    - name: Do tenth update of day
+      include_tasks: ../../../../../tasks/setserial.yml
+
+    - name: Assert serial is still with today's date and as tenth update
+      assert:
+        that:
+          - serial_new == today_yymmdd.stdout | string + "10"
+  tags: testtenthupdate
+...

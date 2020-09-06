@@ -1,6 +1,7 @@
 ---
 - name: Verify
   hosts: all
+  gather_facts: no
   tasks:
     - name: Run Test Role in Molecule
       include_role:

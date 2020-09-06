@@ -2,6 +2,6 @@
 - name: Converge
   hosts: all
   tasks:
-    - name: "Include bind"
+    - name: "Include Role bind"
       include_role:
         name: "bind"

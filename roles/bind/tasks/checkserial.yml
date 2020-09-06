@@ -1,0 +1,58 @@
+---
+- name: Check Latest Serial Number
+  block:
+    - name: Check if BIND is running
+      service_facts:
+
+    - name: Get serial number from server if it's running
+      shell:
+        cmd: "dig @localhost +multi soa '{{ domain }}' | grep 'serial' | sed -En 's/\\s*([0-9]+)\\s.*/\\1/p'"
+      register: serial
+      when:
+        - ansible_facts.services['named.service'] is defined
+        - ansible_facts.services['named.service'].state == "running"
+
+    - name: Print current serial numbers for {{ domain }} found locally on servers in inventory
+      debug:
+        msg: "Serial number on {{ inventory_hostname }}: {{ serial.stdout }}"
+      when: serial.stdout is defined
+
+    - name: Get serial number from any server if it's not running locally
+      shell:
+        cmd: "dig +multi soa '{{ domain }}' | grep 'serial' | sed -En 's/\\s*([0-9]+)\\s.*/\\1/p'"
+      register: serialnotlocal
+      when: (ansible_facts.services['named.service'] is not defined) or
+        (ansible_facts.services['named.service'].state != "running")
+
+    - name: Print serial number for {{ domain }} found on servers not in inventory
+      debug:
+        msg: "{{ serialnotlocal.stdout }}"
+      when:
+        - serial.stdout is not defined
+        - serialnotlocal.stdout is defined
+
+    - name: Extract details from local serial number if available
+      set_fact:
+        serial_yymmdd: "{{ serial.stdout[:8] }}"
+        serial_count: "{{ serial.stdout[-2:] }}"
+      when:
+        - serial.stdout is defined
+        - serialnotlocal.stdout is not defined
+
+    - name: Extract details from non local serial number if available
+      set_fact:
+        serial_yymmdd: "{{ serialnotlocal.stdout[:8] }}"
+        serial_count: "{{ serialnotlocal.stdout[-2:] }}"
+      when:
+        - serial.stdout is not defined
+        - serialnotlocal.stdout is defined
+
+    - name: Extract details from serial number if not available
+      set_fact:
+        serial_yymmdd: "000000"
+        serial_count: "01"
+      when:
+        - serial.stdout is not defined
+        - serialnotlocal.stdout is not defined
+  tags: checkserial
+...

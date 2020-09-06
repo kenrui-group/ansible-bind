@@ -1,7 +1,7 @@
 bindversion: "9.11"
 domain: "mydomain.com"
-ip_reverse: "1.0.10"
-ip_reverse_zone_file_prefix: "10.0.1"
+ip_reverse: "2.0.10"
+ip_reverse_zone_file_prefix: "10.0.2"
 zone_records:
   uat:
     hostname: "uat"

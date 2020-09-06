@@ -1,29 +1,9 @@
 ---
-- name: Test DNS Lookup
-  command:
-    cmd: "dig @localhost +short {{ item.value.hostname + \".\" + domain }}"
-  loop: "{{ lookup('dict', zone_records) }}"
-  register: dig_results
-  changed_when: false
+- name: Test serial update
+  include_tasks: testserialupdate.yml
+  tags: testserialupdate
 
-- name: Assert Correct Number Of Records Are Available
-  assert:
-    that:
-      - dig_results.results | length == zone_records | length
-  when: dig_results.results | length > 0
-
-- name: Assert Returned IPs
-  assert:
-    that:
-      - item.0.stdout == ip_reverse_zone_file_prefix + "." + item.2.hostip
-    success_msg: "{{ item.2.hostname + \".\" + domain }} returned correct IP."
-    fail_msg: "{{ item.2.hostname + \".\" + domain }} should return {{ ip_reverse_zone_file_prefix + \".\" + item.2.hostip }} but returned {{ item.0.stdout }}."
-  with_together:
-    - "{{ dig_results.results }}"
-    - "{{ zone_records.items() | list }}"
-  when: dig_results.results | length > 0
-  loop_control:
-    label:
-      - "{{ item.0.stdout }}"
-      - "{{ item.2.hostip }}"
+- name: Test DNS lookup
+  include_tasks: testdnslookup.yml
+  tags: testdnslookup
 ...

@@ -13,35 +13,7 @@
   tags: sethostname
 
 - name: Check latest serial number
-  block:
-    - name: Check if BIND is running
-      service_facts:
-
-    - name: Get serial number from server if it's running
-      shell:
-        cmd: "dig @localhost +multi soa '{{ domain }}' | grep 'serial' | sed -En 's/\\s*([0-9]+)\\s.*/\\1/p'"
-      register: serial
-      when:
-        - ansible_facts.services['named.service'] is defined
-        - ansible_facts.services['named.service'].state == "running"
-
-    - name: Print serial numbers
-      debug:
-        msg: "Serial number on {{ inventory_hostname }}: {{ serial.stdout }}"
-      when: serial.stdout is defined
-
-    - name: Get serial number from any server if it's not running locally
-      shell:
-        cmd: "dig +multi soa '{{ domain }}' | grep 'serial' | sed -En 's/\\s*([0-9]+)\\s.*/\\1/p'"
-      register: serial
-      when: (ansible_facts.services['named.service'] is not defined) or
-            (ansible_facts.services['named.service'].state != "running")
-
-    - name: Print serial number
-      debug:
-        msg: "{{ serial.stdout }}"
-      when: serial.stdout is defined
-  tags: checkserial
+  include_tasks: checkserial.yml
 
 - name: Install or upgrade to latest stable version of BIND
   dnf:
@@ -85,7 +57,7 @@
       command:
         cmd: named-checkconf /etc/named.conf
 
-    - name: Create Zone File Directory
+    - name: Create zone file directory
       file:
         path: "/var/named/{{ type }}"
         state: directory
@@ -93,7 +65,10 @@
         group: named
         mode: '0700'
 
-    - name: Copy Forward File
+    - name: Set new serial number
+      include_tasks: setserial.yml
+
+    - name: Copy forward file
       template:
         src: "zone/forward.db.j2"
         dest: "/var/named/{{ type }}/{{ domain }}.db"
@@ -103,7 +78,7 @@
         trim_blocks: yes
         lstrip_blocks: yes
 
-    - name: Copy Reverse File
+    - name: Copy reverse file
       template:
         src: "zone/reverse.db.j2"
         dest: "/var/named/{{ type }}/{{ ip_reverse_zone_file_prefix }}.db"
@@ -113,7 +88,7 @@
         trim_blocks: yes
         lstrip_blocks: yes
 
-    - name: Validate Zone file
+    - name: Validate zone file
       command:
         cmd: "named-checkzone {{ domain }} /var/named/{{ type }}/{{ domain }}.db"
 
