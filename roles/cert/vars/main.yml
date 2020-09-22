@@ -1,0 +1,21 @@
+domain: "mydomain1234.com"
+organization_name: "MyDomain1234"
+email_address: "support@mydomain1234.com"
+common_name: "mydomain1234.com"
+# Continuous Integration - Pebble
+acme_directory: "https://172.17.0.4:14000/dir"
+# Staging https://letsencrypt.org/docs/staging-environment/
+#acme_directory: "https://acme-staging-v02.api.letsencrypt.org/directory"
+# Production https://letsencrypt.org/docs/acme-protocol-updates/
+#acme_directory: "https://acme-v02.api.letsencrypt.org/directory"
+acme_version: 2
+remaining_days: 30
+challenge_record_file: "/etc/ssl/challenge_record_file"
+# Set to not validate server certificate if Pebble is used as ACME directory
+validate_certs: no
+directories:
+  - private
+  - public
+  - csr
+  - private_account
+  - cert

@@ -1,0 +1,23 @@
+---
+- name: Given role 'cert' has been applied
+  block:
+    - name: When checking for directories status
+      stat:
+        path: "/etc/ssl/{{ item }}"
+      with_items:
+        - "{{ directories }}"
+      register: directories_status
+
+    - name: Assert directories exist with the correct attribute and ownership
+      assert:
+        that:
+          - item.stat.exists
+          - item.stat.isdir
+          - item.stat.mode == '0711'
+          - item.stat.pw_name == "root"
+          - item.stat.gr_name == "root"
+        quiet: yes
+      loop: "{{ directories_status.results }}"
+      loop_control:
+        label: "{{ item.stat.path }}"
+...

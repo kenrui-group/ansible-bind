@@ -1,0 +1,229 @@
+---
+- name: Create required directories in /etc/ssl
+  file:
+    path: "/etc/ssl/{{ item }}"
+    state: directory
+    owner: root
+    group: root
+    mode: u=rwx,g=x,o=x
+  with_items:
+    - "{{ directories }}"
+  when: type == "master"
+  tags: createdir
+
+# Per RFC 8555 §11.1 one key pair is used for account and another key pair is used to sign CSR
+- name: Generate private key for account use and create ACME account exists
+  block:
+    - name: Generate an OpenSSL private key for ACME account (keep if exists)
+      openssl_privatekey:
+        path: "/etc/ssl/private_account/{{ domain }}.pem"
+        mode: '0600'
+        force: no
+        backup: yes
+        type: RSA
+      register: keygen_private_account
+
+    # https://letsencrypt.org/docs/rate-limits/
+    # Rate limit for new account - production is 10 Accounts per IP Address per 3 hours
+    # https://letsencrypt.org/docs/staging-environment/
+    # Rate limit for new account - staging is 50 accounts per 3 hour period per IP
+    - name: Create new account on each run with given contacts to allow rebuilding machines
+      acme_account:
+        account_key_src: "/etc/ssl/private_account/{{ domain }}.pem"
+        acme_directory: "{{ acme_directory }}"
+        acme_version: "{{ acme_version }}"
+        allow_creation: yes
+        state: present
+        terms_agreed: yes
+        validate_certs: "{{ validate_certs }}"
+        contact:
+          - "mailto: {{ email_address }}"
+      register:
+        account_uri
+
+    - name: Print account returned
+      debug:
+        msg: "Account returned: {{ account_uri }}"
+
+    - name: Check again the account really exists since we may change account private key
+      include_tasks: check_account.yml
+  when: type == "master"
+  tags: createaccount
+
+# Per RFC 8555 §11.1 one key pair is used for account and another key pair is used to sign CSR
+- name: Generate new private / public key pair to generate certificate signing request
+  block:
+    - name: Generate an OpenSSL private key for CSR, Challenge Request, and Certificate Retrieval
+      openssl_privatekey:
+        path: "/etc/ssl/private/{{ domain }}.pem"
+        mode: '0600'
+        force: yes
+        backup: yes
+        type: RSA
+      register: keygen_private
+
+    - name: Generate an OpenSSL public key in PEM format
+      openssl_publickey:
+        path: "/etc/ssl/public/{{ domain }}.pem"
+        privatekey_path: "/etc/ssl/private/{{ domain }}.pem"
+        mode: '0644'
+        force: yes
+        backup: yes
+        format: PEM
+      register: keygen_public
+
+    - name: Generate an OpenSSL Certificate Signing Request with Subject information (OCSP Stapling is enabled)
+      openssl_csr:
+        path: "/etc/ssl/csr/{{ common_name }}.csr"
+        privatekey_path: "/etc/ssl/private/{{ domain }}.pem"
+        mode: '0644'
+        country_name: CA
+        organization_name: "{{ organization_name }}"
+        email_address: "{{ email_address }}"
+        common_name: "{{ common_name }}"
+        ocsp_must_staple: yes
+        force: yes
+        backup: yes
+        subject_alt_name: "{{ item.value | map('regex_replace', '^', 'DNS:') | list }}"
+      with_dict:
+        dns_server:
+          - "{{ domain }}"
+      register: csrgen
+  when:  type == "master"
+  tags: generatecsr
+
+- name: Use account's private key to submit CSR and request challenge
+  block:
+    - name: Get a challenge using an account key file and force renewal even if cert_days >= remaining_days (default 10)
+      acme_certificate:
+        account_key_src: "/etc/ssl/private_account/{{ domain }}.pem"
+        account_email: "{{ email_address }}"
+        csr: "/etc/ssl/csr/{{ common_name }}.csr"
+        dest: "/etc/ssl/cert/{{ domain }}.crt"
+        challenge: dns-01
+        acme_directory: "{{ acme_directory }}"
+        acme_version: "{{ acme_version }}"
+        modify_account: no
+        terms_agreed: yes
+        validate_certs: "{{ validate_certs }}"
+        force: yes
+      register: challenge_returned
+
+    - debug:
+        var: challenge_returned
+      when: challenge_returned is defined
+
+    # Per following sometimes server is happy with no challenge so need to determine status
+    # https://github.com/letsencrypt/pebble#authorization-reuse
+    - name: Determine if authorization re-use is in effect
+      set_fact:
+        authorization_status: "{{ challenge_returned.authorizations[ domain ].status }}"
+      when: challenge_returned is defined
+  when:
+    - type == "master"
+  tags: getchallenge
+
+- name: Print details if challenge is not required
+  block:
+    - name: Challenge is not required
+      debug:
+        msg: "authorization_status: {{ authorization_status }} so no need to do challenge."
+  when:
+    - type == "master"
+    - challenge_returned is defined
+    - authorization_status != "pending"
+
+- name: Print details if challenge is required
+  block:
+    - name: Challenge is required
+      debug:
+        msg: "authorization_status: {{ authorization_status }} so need to do challenge."
+
+    - name: Print challenge record name
+      debug:
+        msg: "{{ challenge_returned.challenge_data[ domain ]['dns-01'].resource }}"
+
+    - name: Print challenge record value
+      debug:
+        msg: "{{ challenge_returned.challenge_data[ domain ]['dns-01'].resource_value | regex_replace('^(.*)$', '\"\\1\"') }}"
+
+    - name: Write challenge record value to file so Molecule test can validate
+      copy:
+        content: "{{ challenge_returned.challenge_data[ domain ]['dns-01'].resource_value | regex_replace('^(.*)$', '\"\\1\"') }}"
+        dest: "{{ challenge_record_file }}"
+        mode: '0644'
+  when:
+    - type == "master"
+    - challenge_returned is defined
+    - authorization_status == "pending"
+
+- name: Update DNS with challenge
+  block:
+    - name: Add DNS challenge record
+      nsupdate:
+        server: "127.0.0.1"
+        record: "{{ challenge_returned.challenge_data[ domain ]['dns-01'].resource }}"
+        type: "TXT"
+        value: "{{ challenge_returned.challenge_data[ domain ]['dns-01'].resource_value | regex_replace('^(.*)$', '\"\\1\"') }}"
+        zone: "{{ domain }}"
+        state: present
+      when:
+        - type == "master"
+        - challenge_returned is defined
+        - authorization_status == "pending"
+
+    # Per following dynamic updates are not written to disk immediately
+    # https://ftp.isc.org/www/bind/arm95/Bv9ARM.ch04.html
+    - name: Dump changes to all dynamic zones to disk
+      command:
+        cmd: rndc sync
+
+    - name: Command for querying DNS challenge record
+      debug:
+        msg: "Issue 'dig @172.17.0.2 _acme-challenge.{{ domain }} TXT' to query if desired"
+      when:
+        - type == "master"
+        - challenge_returned is defined
+        - authorization_status == "pending"
+  tags: updatedns
+
+- name: Use account's private key to validate challenge and retrieve certificate
+  block:
+    - name: Let the challenge be validated and retrieve the cert and intermediate certificate and force renewal even if cert_days >= remaining_days (default 10)
+      acme_certificate:
+        account_key_src: "/etc/ssl/private_account/{{ domain }}.pem"
+        account_email: "{{ email_address }}"
+        csr: "/etc/ssl/csr/{{ common_name }}.csr"
+        dest: "/etc/ssl/cert/{{ common_name }}.crt"
+        fullchain_dest: "/etc/ssl/cert/{{ common_name }}-fullchain.crt"
+        chain_dest: "/etc/ssl/cert/{{ common_name }}-intermediate.crt"
+        challenge: dns-01
+        acme_directory: "{{ acme_directory }}"
+        acme_version: "{{ acme_version }}"
+        remaining_days: "{{ remaining_days }}"
+        data: "{{ challenge_returned }}"
+        modify_account: no
+        terms_agreed: yes
+        validate_certs: "{{ validate_certs }}"
+        force: yes
+      register: validation_result
+
+    - name: Print challenge validation status
+      debug:
+        var: validation_result
+      when: validation_result is defined
+
+    - name: Get certificate content
+      command:
+        cmd: "openssl x509 -in /etc/ssl/cert/{{ common_name }}.crt -text -noout"
+      register: certificate_content
+      when: validation_result is defined
+
+    - name: Print certificate content
+      debug:
+        msg: "{{ certificate_content.stdout_lines }}"
+      when: validation_result is defined
+  when:
+    - challenge_returned is defined
+    - type == "master"
+...

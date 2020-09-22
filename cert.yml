@@ -1,0 +1,9 @@
+---
+- name: Manage certificates
+  hosts: servers
+  become: yes
+  become_method: sudo
+  gather_facts: no
+
+  roles:
+    - cert

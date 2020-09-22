@@ -1,0 +1,16 @@
+---
+- name: Check only on master
+  block:
+    - name: Check again the account really exists since we may change account private key
+      acme_account_info:
+        account_key_src: "/etc/ssl/private_account/{{ domain }}.pem"
+        acme_directory: "{{ acme_directory }}"
+        acme_version: 2
+        validate_certs: "{{ validate_certs }}"
+      register: account_data
+
+    - name: Print account status
+      debug:
+        var: account_data
+  when: type == "master"
+...

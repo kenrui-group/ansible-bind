@@ -1,0 +1,11 @@
+---
+- name: Converge
+  hosts: servers
+  tasks:
+#    - name: "Include role bind"
+#      include_role:
+#        name: "bind"
+
+    - name: "Include role cert"
+      include_role:
+        name: "cert"

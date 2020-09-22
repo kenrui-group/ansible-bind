@@ -1,0 +1,28 @@
+---
+- name: Given role 'cert' has been applied
+  block:
+    - name: Get hash of public key from private key
+      shell:
+        cmd: "openssl pkey -in /etc/ssl/private/{{ domain }}.pem -pubout -outform pem | sha256sum"
+      register: public_key_hash
+
+    - name: Get hash of certificate signing request
+      shell:
+        cmd: "openssl req -in /etc/ssl/csr/{{ common_name }}.csr -pubkey -noout -outform pem | sha256sum"
+      register: csr_hash
+
+    - name: Get hash of certificate retrieved
+      shell:
+        cmd: "openssl x509 -in /etc/ssl/cert/{{ common_name }}.crt -pubkey -noout -outform pem | sha256sum"
+      register: certificate_hash
+
+    - name: Assert that the public key hash matches the csr hash
+      assert:
+        that:
+          - public_key_hash.stdout == csr_hash.stdout
+
+    - name: Assert that the public key hash matches the certificate hash
+      assert:
+        that:
+          - public_key_hash.stdout == certificate_hash.stdout
+...

@@ -1,0 +1,62 @@
+---
+- name: Check only on master
+  block:
+    - name: Check certificate is available
+      stat:
+        path: "/etc/ssl/cert/{{ common_name }}.crt"
+      register: certfile_stat
+
+    - name: Check certificate dates
+      command:
+        cmd: "openssl x509 -in /etc/ssl/cert/{{ common_name }}.crt -noout -startdate -enddate"
+      register: certificate_enddate
+      when:
+        - certfile_stat.stat.exists
+        - certfile_stat.stat.isreg
+
+    - name: Print certificate start and end dates
+      debug:
+        var: certificate_enddate.stdout_lines
+      when:
+        - certfile_stat.stat.exists
+        - certfile_stat.stat.isreg
+        - certificate_enddate is defined
+
+    - name: Extract start and end dates
+      set_fact:
+        start_date: "{{ certificate_enddate.stdout_lines | map('regex_search', 'notBefore.*') | select('string') | list | regex_replace('notBefore=(?P<startDate>.*)', '\\g<startDate>') }}"
+        end_date: "{{ certificate_enddate.stdout_lines | map('regex_search', 'notAfter.*') | select('string') | list | regex_replace('notAfter=(?P<endDate>.*)', '\\g<endDate>') }}"
+      when:
+        - certfile_stat.stat.exists
+        - certfile_stat.stat.isreg
+        - certificate_enddate is defined
+        - certificate_enddate.stdout_lines | type_debug == "list"
+
+    - name: Print certificate start and end dates
+      debug:
+        msg: "Certificate start date: {{ start_date[0] }} and end date: {{ end_date[0] }}"
+
+    - name: Get server date time
+      shell:
+        cmd: 'TZ=GMT date +"%Y-%m-%d %H:%M:%S"'
+      register: server_date_time
+
+    - name: Print server date time
+      debug:
+        msg: "Server current date time: {{ server_date_time.stdout }} GMT."
+
+    - name: Print if certificate is still valid
+      debug:
+        msg: "Certificate is still valid."
+      when:
+        - (server_date_time.stdout | to_datetime) >= (start_date[0] | to_datetime('%b %d %H:%M:%S %Y %Z'))
+        - (server_date_time.stdout | to_datetime) <= (end_date[0] | to_datetime('%b %d %H:%M:%S %Y %Z'))
+
+    - name: Print if certificate is not valid
+      debug:
+        msg: "Certificate is not valid."
+      when:
+        - (server_date_time.stdout | to_datetime) < (start_date[0] | to_datetime('%b %d %H:%M:%S %Y %Z'))
+        - (server_date_time.stdout | to_datetime) > (end_date[0] | to_datetime('%b %d %H:%M:%S %Y %Z'))
+  when: type == "master"
+...

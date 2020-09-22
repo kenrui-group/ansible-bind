@@ -1,0 +1,32 @@
+---
+- name: Given role 'cert' has been applied
+  block:
+    - name: When checking for challenge record file status
+      stat:
+        path: "{{ challenge_record_file }}"
+      register: challenge_record_file_status
+
+    - name: Assert challenge record file exist
+      assert:
+        that:
+          - challenge_record_file_status.stat.exists
+          - challenge_record_file_status.stat.isreg
+          - challenge_record_file_status.stat.mode == '0644'
+          - challenge_record_file_status.stat.pw_name == "root"
+          - challenge_record_file_status.stat.gr_name == "root"
+        quiet: yes
+
+    - name: Retrieve value from DNS
+      command:
+        cmd: "dig -t txt _acme-challenge.{{ domain }} @localhost +short"
+      register: challenge_value_from_dns
+
+    - name: Read value written into challenge record file
+      command: "cat {{ challenge_record_file }}"
+      register: challenge_value_given
+
+    - name: Assert value added to DNS matches what was given
+      assert:
+        that:
+          - challenge_value_from_dns.stdout == challenge_value_given.stdout
+...

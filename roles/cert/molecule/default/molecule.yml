@@ -34,6 +34,25 @@ platforms:
     volumes:
       - /sys/fs/cgroup:/sys/fs/cgroup:ro
     privileged: true
+  - name: pebble
+    image: docker.io/letsencrypt/pebble:latest
+    pre_build_image: false
+#    command: pebble -config /test/my-pebble-config.json -dnsserver 172.17.0.2:53
+#    command: /usr/bin/pebble -config /test/my-pebble-config.json -dnsserver 172.17.0.2:53
+    command: /usr/bin/pebble -dnsserver 172.17.0.2:53
+    ports:
+      - 14000:14000  # ACME port
+      - 15000:15000  # Management port
+    environment:
+      # https://github.com/letsencrypt/pebble#testing-at-full-speed
+      - PEBBLE_VA_NOSLEEP=15
+      - PEBBLE_WFE_NONCEREJECT=99
+    tmpfs:
+      - /tmp
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:ro
+      - ./my-pebble-config.json:/test/my-pebble-config.json
+    privileged: true
 provisioner:
   name: ansible
   inventory:

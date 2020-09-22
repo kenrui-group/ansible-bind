@@ -1,8 +1,8 @@
 ---
 - name: Verify
-  hosts: all
+  hosts: servers
   gather_facts: no
   tasks:
     - name: Run test role in Molecule
       include_role:
-        name: "test_bind"
+        name: "test_cert"

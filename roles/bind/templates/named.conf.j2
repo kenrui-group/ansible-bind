@@ -44,6 +44,12 @@ options {
         dnssec-enable no;
         dnssec-validation no;
 
+        # Permit dynamic update of Zone records via nsupdate when running locally
+        allow-update {localhost;};
+
+        # Default is to not log queries unless 'rndc querylog on' is used
+        querylog no;
+
         managed-keys-directory "/var/named/dynamic";
 
         pid-file "/run/named/named.pid";
@@ -102,12 +108,42 @@ controls {
               };
 };
 
+# Refer to following for additional logging channels
+# https://kb.isc.org/docs/aa-01526
 logging {
-        channel default_debug {
-                print-time yes;
-                print-category yes;
-                print-severity yes;
-                file "data/named.run";
-                severity dynamic;
-        };
+     channel default_log {
+          file "/var/named/log/default" versions 3 size 20m;
+          print-time yes;
+          print-category yes;
+          print-severity yes;
+          severity info;
+     };
+     channel zone_transfers_log {
+          file "/var/named/log/zone_transfers" versions 3 size 20m;
+          print-time yes;
+          print-category yes;
+          print-severity yes;
+          severity info;
+     };
+     channel ddns_log {
+          file "/var/named/log/ddns" versions 3 size 20m;
+          print-time yes;
+          print-category yes;
+          print-severity yes;
+          severity info;
+     };
+     channel queries_log {
+          file "/var/named/log/queries" versions 600 size 20m;
+          print-time yes;
+          print-category yes;
+          print-severity yes;
+          severity info;
+     };
+     category notify { zone_transfers_log; default_debug; };
+     category xfer-in { zone_transfers_log; default_debug; };
+     category xfer-out { zone_transfers_log; default_debug; };
+     category update{ ddns_log; default_debug; };
+     category update-security { ddns_log; default_debug; };
+     category queries { queries_log; };
+     category query-errors { queries_log; };
 };

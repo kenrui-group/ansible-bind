@@ -23,11 +23,11 @@
 
 - name: Generate rndc key
   block:
-    - name: Generate key
+    - name: Generate rndc key
       command:
         cmd: rndc-confgen -a -c /etc/rndc.key
 
-    - name: Set ownership
+    - name: Set rndc key ownership
       file:
         path: "/etc/rndc.key"
         owner: root
@@ -60,6 +60,14 @@
     - name: Create zone file directory
       file:
         path: "/var/named/{{ type }}"
+        state: directory
+        owner: named
+        group: named
+        mode: '0700'
+
+    - name: Create log directory
+      file:
+        path: "/var/named/log"
         state: directory
         owner: named
         group: named

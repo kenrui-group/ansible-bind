@@ -4,19 +4,31 @@ has already been set with the correct network details (eg IP, DNS servers, etc).
 
 # Features
 The playbook is idempotent and permits a regular rebuild of DNS servers to achieve the following:
-* Install the latest BIND available.
+* Install the latest [BIND](https://www.isc.org/bind/) available.
 * Update of zone records.
 * Rotate RNDC keys.
+* Get / revoke certificate from [Let's Encrypt](https://letsencrypt.org/).
+* Check certificate expiry status by comparing server date time and certificate start / end date time.
+* Test certificate issue / revoke using [Let's Encrypt Pebble](https://github.com/letsencrypt/pebble).
 
 Playbook also comes with settings for testing using Molecule.
 
 # Configuration
-Following variables are configurable in vars/main.yml.  Changes need to be synced to molecule/default/roles/test_bind/vars/main.yml.
+Following variables are configurable in vars/main.yml.
 * BIND major version to install or upgraded to.
 * Domain name (eg mydomain.com).
 * Hostnames and IP addresses.
+* ACME directory can be set to Pebble, staging, or production.
 
 DNS servers' IPs are configured in the inventory-dns file.
+
+---------------------------------------
+
+Changes need to be synced to:
+ - bind/molecule/default/roles/test_bind/vars/main.yml.
+ - cert/molecule/default/roles/test_cert/vars/main.yml.
+
+---------------------------------------
 
 # Reference
 * https://www.digitalocean.com/community/tutorials/how-to-setup-dnssec-on-an-authoritative-bind-dns-server--2
@@ -33,14 +45,25 @@ Reference following site for latest stable version.
 # Example Usage 
 ## Deployment To Production Servers
 ### Both Master and Slave
+#### Playbook 'bind'
 ```bash
 ansible-playbook -i inventory-dns bind.yml -k
 ```
+#### Playbook 'cert'
+Additional flags need to be used to instruct playbook on what to be done.
+```bash
+ansible-playbook -i inventory-dns cert.yml -e issue=true -k
+ansible-playbook -i inventory-dns cert.yml -e revoke=true -k
+ansible-playbook -i inventory-dns cert.yml -e check_account=true -k
+ansible-playbook -i inventory-dns cert.yml -e check_expiry=true -k
+```
 ### Master - ns1.mydomain.com
+#### Playbook 'bind'
 ```bash
 ansible-playbook -i inventory-dns bind.yml --limit eastcoast -k
 ```
 ### Slave - ns2.mydomain.com
+#### Playbook 'bind'
 ```bash
 ansible-playbook -i inventory-dns bind.yml --limit westcoast -k
 ```
@@ -134,7 +157,8 @@ Following assumes we are within the genie bottle.  Otherwise sudo is required wh
 Assume Windows 10 login is 'joe' and project name is ansible-bind, and IntelliJ is the default IDE.
 ```bash
 USER_NAME=joe
-ROLE_NAME=bind
+ROLE_NAME=bind # Check bind playbook
+ROLE_NAME=cert # Check cert playbook
 PROJECT_NAME=ansible-bind
 ROLE_PATH="/mnt/c/Users/${USER_NAME}/IdeaProjects/${PROJECT_NAME}/roles/${ROLE_NAME}"
 MOLECULE_PATH="/mnt/c/Users/${USER_NAME}/IdeaProjects/${PROJECT_NAME}/roles/${ROLE_NAME}/molecule"
@@ -154,6 +178,14 @@ docker ps
 Note the two tags being skipped as they aren't supported within the docker images.
 ```bash
 molecule converge -- --skip-tags sethostname,permit-port53
+```
+
+When testing 'cert' playbook additional flags need to be used to instruct playbook on what to be done.
+```bash
+molecule converge -- --skip-tags sethostname,permit-port53 -e issue=true
+molecule converge -- --skip-tags sethostname,permit-port53 -e revoke=true
+molecule converge -- --skip-tags sethostname,permit-port53 -e check_account=true
+molecule converge -- --skip-tags sethostname,permit-port53 -e check_expiry=true
 ```
 ### Lint Playbooks
 ```bash

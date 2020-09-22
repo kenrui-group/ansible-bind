@@ -1,20 +1,20 @@
 bindversion: "9.11"
-domain: "mydomain.com"
-ip_reverse: "2.0.10"
-ip_reverse_zone_file_prefix: "10.0.2"
+domain: "mydomain1234.com"
+ip_reverse: "0.17.172"
+ip_reverse_zone_file_prefix: "172.17.0"
 zone_records:
   uat:
     hostname: "uat"
-    hostip: "1"
+    hostip: "4"
   www:
     hostname: "www"
-    hostip: "2"
+    hostip: "5"
   ns1:
     hostname: "ns1"
-    hostip: "3"
+    hostip: "2"
   ns2:
     hostname: "ns2"
-    hostip: "4"
+    hostip: "3"
   confluence:
     hostname: "confluence"
-    hostip: "5"
+    hostip: "6"

@@ -1,0 +1,44 @@
+---
+- name: Validate run time variables are set correct
+  block:
+    - name: Ensure playbook is instructed to do at least one thing
+      fail:
+        msg: "One of the variables 'issue', 'revoke', 'check_account', or 'check_expiry' must be set to true."
+      when:
+        - issue is not defined
+        - revoke is not defined
+        - check_account is not defined
+        - check_expiry is not defined
+
+    - name: Ensure issue and revoke is not done at the same time
+      fail:
+        msg: "Please have the playbook to do either revoke or issue certificate."
+      when:
+        - issue is defined
+        - revoke is defined
+  tags: checkvariables
+
+- name: Issue certificate
+  include_tasks: issue_cert.yml
+  when:
+    - issue is defined
+    - issue | bool == true
+
+- name: Revoke certificate
+  include_tasks: revoke_cert.yml
+  when:
+    - revoke is defined
+    - revoke | bool == true
+
+- name: Check account
+  include_tasks: check_account.yml
+  when:
+    - check_account is defined
+    - check_account | bool == true
+
+- name: Check certificate expiry date
+  include_tasks: check_expiry.yml
+  when:
+    - check_expiry is defined
+    - check_expiry | bool == true
+...

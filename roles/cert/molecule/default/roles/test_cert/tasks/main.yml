@@ -1,0 +1,34 @@
+---
+- name: Test directories are created
+  include_tasks: testcreatedir.yml
+  tags: testcreatedir
+  when: type == "master"
+
+- name: Test key pairs are generated
+  include_tasks: testkeygen.yml
+  when: type == "master"
+  tags: testkeygen
+
+- name: Test DNS is updated with challenge
+  include_tasks: testnsupdate.yml
+  when: type == "master"
+  tags: testnsupdate
+
+- name: Test certificate retrieved is correctg
+  include_tasks: testcertificate.yml
+  when: type == "master"
+  tags: testcertificate
+
+#####
+# Test certificate per following.
+# https://www.sslshopper.com/certificate-key-matcher.html
+#####
+
+#- name: Test CSR is generated
+#  include_tasks: testcsr.yml
+#  tags: testcsr
+#
+#- name: Test ACME account is available
+#  include_tasks: testacmeaccount.yml
+#  tags: testacmeaccount
+...

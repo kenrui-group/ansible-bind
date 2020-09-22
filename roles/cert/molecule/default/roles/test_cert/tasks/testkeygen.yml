@@ -1,0 +1,40 @@
+---
+- name: Given role 'cert' has been applied test certificates exist
+  block:
+    - name: When checking for keys generated
+      stat:
+        path: "/etc/ssl/{{ item }}/{{ domain }}.pem"
+      with_items:
+        - "private"
+        - "public"
+      register: cert_status
+
+    - name: Assert certificates exist
+      assert:
+        that:
+          - item.stat.exists
+          - item.stat.isreg
+          - item.stat.pw_name == "root"
+          - item.stat.gr_name == "root"
+        quiet: yes
+      loop: "{{ cert_status.results }}"
+      loop_control:
+        label: "{{ item.stat.path }}"
+
+- name: Given role 'cert' has been applied test private key matches CSR
+  block:
+    - name: When getting MD5 of the private key's modulus
+      shell:
+        cmd: "openssl rsa -noout -modulus -in /etc/ssl/private/{{ domain }}.pem | openssl md5"
+      register: md5_modulus_privatekey
+
+    - name: When getting MD5 of the CSR's modulus
+      shell:
+        cmd: "openssl req -noout -modulus -in /etc/ssl/csr/{{ common_name }}.csr | openssl md5"
+      register: md5_modulus_csr
+
+    - name: Assert both MD5s are identical
+      assert:
+        that:
+          - md5_modulus_privatekey.stdout == md5_modulus_csr.stdout
+...

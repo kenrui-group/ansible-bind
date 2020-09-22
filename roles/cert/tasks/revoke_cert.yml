@@ -1,0 +1,35 @@
+---
+- name: Revoke only on master
+  block:
+    - name: Check certificate is available
+      stat:
+        path: "/etc/ssl/cert/{{ common_name }}.crt"
+      register: certfile_stat
+
+    - name: Revoke certificate
+      acme_certificate_revoke:
+        account_key_src: "/etc/ssl/private_account/{{ domain }}.pem"
+        acme_directory: "{{ acme_directory }}"
+        acme_version: "{{ acme_version }}"
+        certificate: "/etc/ssl/cert/{{ common_name }}.crt"
+        validate_certs: "{{ validate_certs }}"
+      register: revoke_status
+      when:
+        - certfile_stat.stat.exists
+        - certfile_stat.stat.isreg
+
+    - name: Print revoke result
+      debug:
+        var: revoke_status
+      when: revoke_status is defined
+
+    - name: Delete certificate if revoke was successful
+      file:
+        path: "/etc/ssl/cert/{{ common_name }}.crt"
+        state: absent
+      when:
+        - revoke_status is defined
+        - revoke_status.changed | bool == true
+        - revoke_status.failed | bool == false
+  when: type == "master"
+...
