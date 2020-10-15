@@ -12,6 +12,9 @@
       when: type == "slave"
   tags: sethostname
 
+- name: Check if BIND is running
+  service_facts:
+
 - name: Check latest serial number
   include_tasks: checkserial.yml
 
@@ -21,7 +24,7 @@
     state: latest
   tags: installbind
 
-- name: Generate rndc key
+- name: Generate or rotate rndc key
   block:
     - name: Generate rndc key
       command:
@@ -41,6 +44,18 @@
         owner: named
         group: named
         mode: '0640'
+
+    - name: Restart BIND if it's running to load new rndc key (Retry after 3 seconds if first attempt fails)
+      systemd:
+        name: named
+        state: restarted
+      register: result
+      retries: 2
+      delay: 3
+      until: result.status.ActiveState == "active"
+      when:
+        - ansible_facts.services['named.service'] is defined
+        - ansible_facts.services['named.service'].state == "running"
   tags: generate-rndc-key
 
 - name: Configure BIND
@@ -76,6 +91,18 @@
     - name: Set new serial number
       include_tasks: setserial.yml
 
+    # Check if zone records exist
+    # - If yes then rndc freeze, copy files, rndc thaw
+    # - If no copy files without freeze and thaw
+    - name: Check if forward zone file exist
+      stat:
+        path: "/var/named/{{ type }}/{{ domain }}.db"
+      register: zone_forward_status
+
+    - name: Freeze DNS
+      command: rndc freeze
+      when: zone_forward_status.stat.exists == true
+
     - name: Copy forward file
       template:
         src: "zone/forward.db.j2"
@@ -95,6 +122,10 @@
         mode: '0600'
         trim_blocks: yes
         lstrip_blocks: yes
+
+    - name: Thaw DNS
+      command: rndc thaw
+      when: zone_forward_status.stat.exists == true
 
     - name: Validate zone file
       command:
@@ -140,10 +171,14 @@
       name: named
       state: reloaded
 
-  - name: Restart BIND
+  - name: Restart BIND (Retry after 3 seconds if first attempt fails)
     systemd:
       name: named
       state: restarted
+    register: result
+    retries: 2
+    delay: 3
+    until: result.status.ActiveState == "active"
 
 #  - name: Generate SELinux Policy
 #    shell:

@@ -1,9 +1,6 @@
 ---
 - name: Check Latest Serial Number
   block:
-    - name: Check if BIND is running
-      service_facts:
-
     - name: Get serial number from server if it's running
       shell:
         cmd: "dig @localhost +multi soa '{{ domain }}' | grep 'serial' | sed -En 's/\\s*([0-9]+)\\s.*/\\1/p'"

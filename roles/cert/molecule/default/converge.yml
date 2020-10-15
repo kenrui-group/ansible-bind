@@ -2,9 +2,15 @@
 - name: Converge
   hosts: servers
   tasks:
-#    - name: "Include role bind"
-#      include_role:
-#        name: "bind"
+    - name: Check if BIND is running
+      service_facts:
+
+    - name: "Include role bind only if it's not setup or running"
+      include_role:
+        name: "bind"
+      when: >
+        ansible_facts.services['named.service'] is not defined or
+        ansible_facts.services['named.service'].state != "running"
 
     - name: "Include role cert"
       include_role:

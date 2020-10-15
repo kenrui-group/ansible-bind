@@ -19,7 +19,7 @@
         - utcdate.stdout == serial_yymmdd
         - serial_count | int < 9
 
-    - name: Set serial count (non first change of day, original serial < 9)
+    - name: Prepend serial with 0 if less than 9 (non first change of day, original serial < 9)
       set_fact:
         serial_count_new: "{{ \"0\" + serial_count_new_temp | string }}"
       when:

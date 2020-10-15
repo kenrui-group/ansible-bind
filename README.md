@@ -1,3 +1,5 @@
+![Molecule Tests](https://github.com/kenrui-group/ansible-bind/workflows/Molecule%20Tests/badge.svg)
+
 # Overview
 Install or upgrade to latest BIND minor version and apply zone files.  This playbook assumes the server 
 has already been set with the correct network details (eg IP, DNS servers, etc).

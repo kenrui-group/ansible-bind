@@ -1,0 +1,110 @@
+---
+name: Molecule Tests
+on: [workflow_dispatch]
+jobs:
+  run-molecule-tests:
+    env:
+      ANSIBLE_VERSION: 2.9.13
+    runs-on: ubuntu-20.04
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v2
+        with:
+          path: "${{ github.repository }}"
+      - name: Cache Packages
+        id: cache-packages
+        uses: actions/cache@v2
+        with:
+          path: /usr/local/lib/python*/dist-packages
+          key: ${{ runner.os }}-packages-${{ hashFiles('**/ansible-molecule.yml') }}
+      - name: Install Packages
+        run: |
+          sudo apt install python
+          sudo rm -f /usr/bin/python
+          sudo ln -s /usr/bin/python3 /usr/bin/python
+          sudo apt install python3-pip
+          sudo apt install make
+          sudo apt install coreutils
+          sudo pip3 install packaging
+          sudo pip3 install setuptools
+      - name: Install Ansible
+        run: |
+          wget https://releases.ansible.com/ansible/ansible-$ANSIBLE_VERSION.tar.gz
+          tar xvfz ansible-$ANSIBLE_VERSION.tar.gz
+          cd ansible-$ANSIBLE_VERSION
+          sudo pip3 install -r requirements.txt
+          make
+          sudo make install
+      - name: Install Ansible Lint
+        run: |
+          sudo pip3 install ansible-lint
+      - name: Install Molecule
+        run: |
+          sudo pip3 install molecule
+          sudo pip3 install molecule[docker]
+      - name: Install Docker
+        run: |
+          sudo apt remove docker docker-engine docker.io containerd runc
+          curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
+          sudo add-apt-repository \
+             "deb [arch=amd64] https://download.docker.com/linux/ubuntu \
+             $(lsb_release -cs) \
+             stable"
+          sudo apt update
+          sudo apt install \
+              apt-transport-https \
+              ca-certificates \
+              curl \
+              gnupg-agent \
+              software-properties-common
+          sudo apt install docker-ce docker-ce-cli containerd.io
+      - name: Restart docker service
+        run: |
+          sudo service docker start
+          service docker status
+      - name: Connect Docker Bridge Network To Outside
+        run: |
+          sudo apt-get install bridge-utils
+          sudo apt-get install net-tools
+          sudo brctl addif docker0 eth0
+      - name: Run Molecule Create on Playbook 'bind'
+        run: |
+          cd ${{ github.repository }}/roles/bind
+          molecule create
+      - name: Run Molecule Converge on Playbook 'bind'
+        run: |
+          cd ${{ github.repository }}/roles/bind
+          molecule converge -- --skip-tags sethostname,permit-port53
+      - name: Run Again To Ensure Idempotence (molecule idempotence isn't used here as serial number is expected to change)
+        run: |
+          cd ${{ github.repository }}/roles/bind
+          molecule converge -- --skip-tags sethostname,permit-port53
+      - name: Run Molecule Verify on Playbook 'bind'
+        run: |
+          cd ${{ github.repository }}/roles/bind
+          molecule verify
+      - name: Run Molecule Converge on Playbook 'cert' To Issue Certificate
+        run: |
+          cd ${{ github.repository }}/roles/cert
+          molecule converge -- --skip-tags sethostname,permit-port53 -e issue=true
+      - name: Run Again To Ensure Idempotence (molecule idempotence isn't used here as cert is expected to change)
+        run: |
+          cd ${{ github.repository }}/roles/cert
+          molecule converge -- --skip-tags sethostname,permit-port53 -e issue=true
+      - name: Run Molecule Converge on Playbook 'cert' To Check Account
+        run: |
+          cd ${{ github.repository }}/roles/cert
+          molecule converge -- --skip-tags sethostname,permit-port53 -e check_account=true
+      - name: Run Molecule Converge on Playbook 'cert' To Check Certificate Status
+        run: |
+          cd ${{ github.repository }}/roles/cert
+          molecule converge -- --skip-tags sethostname,permit-port53 -e check_expiry=true
+      - name: Run Molecule Verify on Playbook 'cert'
+        run: |
+          cd ${{ github.repository }}/roles/cert
+          molecule verify
+      - name: Run Molecule Converge on Playbook 'cert' To Revoke Certificate
+        run: |
+          cd ${{ github.repository }}/roles/cert
+          molecule converge -- --skip-tags sethostname,permit-port53 -e revoke=true
+...
