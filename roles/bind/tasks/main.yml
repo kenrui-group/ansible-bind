@@ -101,7 +101,7 @@
 
     - name: Freeze DNS
       command: rndc freeze
-      when: zone_forward_status.stat.exists == true
+      when: zone_forward_status.stat.exists
 
     - name: Copy forward file
       template:
@@ -125,7 +125,7 @@
 
     - name: Thaw DNS
       command: rndc thaw
-      when: zone_forward_status.stat.exists == true
+      when: zone_forward_status.stat.exists
 
     - name: Validate zone file
       command:

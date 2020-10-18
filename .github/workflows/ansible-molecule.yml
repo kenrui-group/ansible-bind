@@ -86,19 +86,19 @@ jobs:
       - name: Run Molecule Converge on Playbook 'cert' To Issue Certificate
         run: |
           cd ${{ github.repository }}/roles/cert
-          molecule converge -- --skip-tags sethostname,permit-port53 -e issue=true
+          molecule converge -- --skip-tags sethostname,permit-port53 -e action=issue -e dir=pebble
       - name: Run Again To Ensure Idempotence (molecule idempotence isn't used here as cert is expected to change)
         run: |
           cd ${{ github.repository }}/roles/cert
-          molecule converge -- --skip-tags sethostname,permit-port53 -e issue=true
+          molecule converge -- --skip-tags sethostname,permit-port53 -e action=issue -e dir=pebble
       - name: Run Molecule Converge on Playbook 'cert' To Check Account
         run: |
           cd ${{ github.repository }}/roles/cert
-          molecule converge -- --skip-tags sethostname,permit-port53 -e check_account=true
+          molecule converge -- --skip-tags sethostname,permit-port53 -e action=check_account -e dir=pebble
       - name: Run Molecule Converge on Playbook 'cert' To Check Certificate Status
         run: |
           cd ${{ github.repository }}/roles/cert
-          molecule converge -- --skip-tags sethostname,permit-port53 -e check_expiry=true
+          molecule converge -- --skip-tags sethostname,permit-port53 -e action=check_expiry
       - name: Run Molecule Verify on Playbook 'cert'
         run: |
           cd ${{ github.repository }}/roles/cert
@@ -106,5 +106,5 @@ jobs:
       - name: Run Molecule Converge on Playbook 'cert' To Revoke Certificate
         run: |
           cd ${{ github.repository }}/roles/cert
-          molecule converge -- --skip-tags sethostname,permit-port53 -e revoke=true
+          molecule converge -- --skip-tags sethostname,permit-port53 -e action=revoke -e dir=pebble
 ...

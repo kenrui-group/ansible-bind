@@ -1,5 +1,5 @@
 bindversion: "9.11"
-domain: "mydomain1234.com"
+domain: "mydomain.com"
 ip_reverse: "0.17.172"
 ip_reverse_zone_file_prefix: "172.17.0"
 zone_records:

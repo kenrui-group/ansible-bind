@@ -9,7 +9,7 @@ The playbook is idempotent and permits a regular rebuild of DNS servers to achie
 * Install the latest [BIND](https://www.isc.org/bind/) available.
 * Update of zone records.
 * Rotate RNDC keys.
-* Get / revoke certificate from [Let's Encrypt](https://letsencrypt.org/).
+* Get / revoke certificate from [Let's Encrypt](https://letsencrypt.org/) using DNS challenge.
 * Check certificate expiry status by comparing server date time and certificate start / end date time.
 * Test certificate issue / revoke using [Let's Encrypt Pebble](https://github.com/letsencrypt/pebble).
 
@@ -19,14 +19,13 @@ Playbook also comes with settings for testing using Molecule.
 Following variables are configurable in vars/main.yml.
 * BIND major version to install or upgraded to.
 * Domain name (eg mydomain.com).
-* Hostnames and IP addresses.
-* ACME directory can be set to Pebble, staging, or production.
+* Hostnames and IP addresses for DNS A and PTR entries.
 
-DNS servers' IPs are configured in the inventory-dns file.
+DNS servers' IPs to be managed via the playbooks are configured in the inventory-dns file.
 
 ---------------------------------------
 
-Changes need to be synced to:
+Molecule is setup to assert changes done by the playbooks so configuration changes need to be synced to the following:
  - bind/molecule/default/roles/test_bind/vars/main.yml.
  - cert/molecule/default/roles/test_cert/vars/main.yml.
 
@@ -52,12 +51,12 @@ Reference following site for latest stable version.
 ansible-playbook -i inventory-dns bind.yml -k
 ```
 #### Playbook 'cert'
-Additional flags need to be used to instruct playbook on what to be done.
+Additional flags need to be used to instruct playbook on what to be done or which Let's Encrypt directory to use.
 ```bash
-ansible-playbook -i inventory-dns cert.yml -e issue=true -k
-ansible-playbook -i inventory-dns cert.yml -e revoke=true -k
-ansible-playbook -i inventory-dns cert.yml -e check_account=true -k
-ansible-playbook -i inventory-dns cert.yml -e check_expiry=true -k
+ansible-playbook -i inventory-dns cert.yml -e action=issue -e dir=staging -k
+ansible-playbook -i inventory-dns cert.yml -e action=revoke -e dir=staging -k
+ansible-playbook -i inventory-dns cert.yml -e action=check_account -e dir=staging -k
+ansible-playbook -i inventory-dns cert.yml -e action=check_expiry -k
 ```
 ### Master - ns1.mydomain.com
 #### Playbook 'bind'
@@ -71,9 +70,11 @@ ansible-playbook -i inventory-dns bind.yml --limit westcoast -k
 ```
 
 # Code Testing
-It is assumed that all development or testing work are to be done in Windows 10 using WSL2 with Ubuntu.
+Molecule testing is done via Github Actions and can run locally within WSL2 as well.
 
-## Environment Setup 
+## Development Environment Setup
+Development can be done on Windows 10 using WSL2 with Ubuntu with the following setup.
+ 
 ### Update OS
 ```bash
 sudo apt update
@@ -183,11 +184,12 @@ molecule converge -- --skip-tags sethostname,permit-port53
 ```
 
 When testing 'cert' playbook additional flags need to be used to instruct playbook on what to be done.
+Note the desired Let's Encrypt directory to use needs to be specified as one of 'pebble', 'staging', 'production'.
 ```bash
-molecule converge -- --skip-tags sethostname,permit-port53 -e issue=true
-molecule converge -- --skip-tags sethostname,permit-port53 -e revoke=true
-molecule converge -- --skip-tags sethostname,permit-port53 -e check_account=true
-molecule converge -- --skip-tags sethostname,permit-port53 -e check_expiry=true
+molecule converge -- --skip-tags sethostname,permit-port53 -e action=issue -e dir=staging
+molecule converge -- --skip-tags sethostname,permit-port53 -e action=revoke -e dir=staging
+molecule converge -- --skip-tags sethostname,permit-port53 -e action=check_account -e dir=staging
+molecule converge -- --skip-tags sethostname,permit-port53 -e action=check_expiry
 ```
 ### Lint Playbooks
 ```bash

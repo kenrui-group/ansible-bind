@@ -3,42 +3,68 @@
   block:
     - name: Ensure playbook is instructed to do at least one thing
       fail:
-        msg: "One of the variables 'issue', 'revoke', 'check_account', or 'check_expiry' must be set to true."
-      when:
-        - issue is not defined
-        - revoke is not defined
-        - check_account is not defined
-        - check_expiry is not defined
+        msg: "Please specify action as one of ['issue', 'revoke', 'check_account', 'check_expiry'].  Eg: '-e action=issue'."
+      when: >
+        action is not defined or
+        (action is defined and
+         action is not in ['issue', 'revoke', 'check_account', 'check_expiry'])
 
-    - name: Ensure issue and revoke is not done at the same time
+    - name: Ensure which Let's Encrypt directory to be used is passed in
       fail:
-        msg: "Please have the playbook to do either revoke or issue certificate."
+        msg: "Please specify which Let's Encrypt directory to use.  Eg: '-e dir=pebble', '-e dir=staging', '-e dir=production'."
       when:
-        - issue is defined
-        - revoke is defined
+        - action is defined
+        - action is in ['issue', 'revoke', 'check_account']
+        - (dir is not defined) or (dir is defined and dir is not in ['pebble', 'staging', 'production'])
+
+    - name: Set directory to 'pebble'
+      set_fact:
+        acme_directory: "{{ acme_directory_pebble }}"
+        validate_certs: no
+      when:
+        - dir is defined
+        - dir == 'pebble'
+
+    - name: Set directory to 'staging'
+      set_fact:
+        acme_directory: "{{ acme_directory_staging }}"
+        validate_certs: yes
+      when:
+        - dir is defined
+        - dir == 'staging'
+
+    - name: Set directory to 'production'
+      set_fact:
+        acme_directory: "{{ acme_directory_production }}"
+        validate_certs: yes
+      when:
+        - dir is defined
+        - dir == 'production'
+  delegate_to: 127.0.0.1
+  run_once: True
   tags: checkvariables
 
 - name: Issue certificate
   include_tasks: issue_cert.yml
   when:
-    - issue is defined
-    - issue | bool == true
+    - action is defined
+    - action == 'issue'
 
 - name: Revoke certificate
   include_tasks: revoke_cert.yml
   when:
-    - revoke is defined
-    - revoke | bool == true
+    - action is defined
+    - action == 'revoke'
 
 - name: Check account
   include_tasks: check_account.yml
   when:
-    - check_account is defined
-    - check_account | bool == true
+    - action is defined
+    - action == 'check_account'
 
 - name: Check certificate expiry date
   include_tasks: check_expiry.yml
   when:
-    - check_expiry is defined
-    - check_expiry | bool == true
+    - action is defined
+    - action == 'check_expiry'
 ...
