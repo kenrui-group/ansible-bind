@@ -1,4 +1,18 @@
 ---
+- name: Install Python3
+  package:
+    name: "{{ item }}"
+    state: latest
+  loop:
+    - python3
+    - python3-pip
+    - python3-setuptools
+
+- name: Install dnspython (required for nsupdate and dig)
+  command:
+    cmd: pip3 install dnspython
+  changed_when: false
+
 - name: Create required directories in /etc/ssl
   file:
     path: "/etc/ssl/{{ item }}"
@@ -178,13 +192,23 @@
       command:
         cmd: rndc sync
 
-    - name: Command for querying DNS challenge record
+    - name: Command for querying DNS challenge record when dir=pebble
       debug:
         msg: "Issue 'dig @172.17.0.2 _acme-challenge.{{ domain }} TXT' to query if desired"
       when:
         - type == "master"
         - challenge_returned is defined
         - authorization_status == "pending"
+        - dir == 'pebble'
+
+    - name: Command for querying DNS challenge record when dir=staging or dir=production
+      debug:
+        msg: "Issue 'dig @ns1.{{ domain }} _acme-challenge.{{ domain }} TXT' to query if desired"
+      when:
+        - type == "master"
+        - challenge_returned is defined
+        - authorization_status == "pending"
+        - dir == 'staging' or dir == 'production'
   tags: updatedns
 
 - name: Use account's private key to validate challenge and retrieve certificate
@@ -207,6 +231,10 @@
         validate_certs: "{{ validate_certs }}"
         force: yes
       register: validation_result
+      retries: 2
+      delay: 3
+      until: validation_result is not failed
+      ignore_errors: yes
 
     - name: Print challenge validation status
       debug:

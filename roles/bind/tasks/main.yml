@@ -90,6 +90,7 @@
 
     - name: Set new serial number
       include_tasks: setserial.yml
+      tags: setserial
 
     # Check if zone records exist
     # - If yes then rndc freeze, copy files, rndc thaw
@@ -155,51 +156,51 @@
 
 - name: Enable / Restart / Reload
   block:
-#  - name: Put SELinux in permissive mode, logging actions that would be blocked.
-#    selinux:
-#      policy: targeted
-#      state: permissive
+    #  - name: Put SELinux in permissive mode, logging actions that would be blocked.
+    #    selinux:
+    #      policy: targeted
+    #      state: permissive
 
-  - name: Enable BIND
-    systemd:
-      name: named
-      enabled: yes
-      masked: no
+    - name: Enable BIND
+      systemd:
+        name: named
+        enabled: yes
+        masked: no
 
-  - name: Reload BIND
-    systemd:
-      name: named
-      state: reloaded
+    - name: Reload BIND
+      systemd:
+        name: named
+        state: reloaded
 
-  - name: Restart BIND (Retry after 3 seconds if first attempt fails)
-    systemd:
-      name: named
-      state: restarted
-    register: result
-    retries: 2
-    delay: 3
-    until: result.status.ActiveState == "active"
+    - name: Restart BIND (Retry after 3 seconds if first attempt fails)
+      systemd:
+        name: named
+        state: restarted
+      register: result
+      retries: 2
+      delay: 3
+      until: result.status.ActiveState == "active"
 
-#  - name: Generate SELinux Policy
-#    shell:
-#      cmd: "ausearch -c 'systemd' --raw | audit2allow -M my-systemd"
-#
-#  - name: Apply SELinux Policy
-#    shell:
-#      cmd: "semodule -X 300 -i my-systemd.pp"
-#
-#  - name: Generate SELinux Policy
-#    shell:
-#      cmd: "ausearch -c 'isc-worker0000' --raw | audit2allow -M my-iscworker0000"
-#
-#  - name: Apply SELinux Policy
-#    shell:
-#      cmd: "semodule -X 300 -i my-iscworker0000.pp"
-#
-#  - name: Put SELinux in permissive mode, logging actions that would be blocked.
-#    selinux:
-#      policy: targeted
-#      state: enforcing
+  #  - name: Generate SELinux Policy
+  #    shell:
+  #      cmd: "ausearch -c 'systemd' --raw | audit2allow -M my-systemd"
+  #
+  #  - name: Apply SELinux Policy
+  #    shell:
+  #      cmd: "semodule -X 300 -i my-systemd.pp"
+  #
+  #  - name: Generate SELinux Policy
+  #    shell:
+  #      cmd: "ausearch -c 'isc-worker0000' --raw | audit2allow -M my-iscworker0000"
+  #
+  #  - name: Apply SELinux Policy
+  #    shell:
+  #      cmd: "semodule -X 300 -i my-iscworker0000.pp"
+  #
+  #  - name: Put SELinux in permissive mode, logging actions that would be blocked.
+  #    selinux:
+  #      policy: targeted
+  #      state: enforcing
   tags: startbind
 
 - name: Test BIND is properly setup and servicing

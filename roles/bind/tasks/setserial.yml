@@ -5,11 +5,17 @@
       command: date '+%Y%m%d' -u
       delegate_to: localhost
       register: utcdate
+      run_once: true
+      become: no
 
-    - debug:
+    - name: Show date obtained from Ansible control server
+      debug:
         var: utcdate.stdout
+      delegate_to: localhost
+      run_once: true
 
-    - debug:
+    - name: Show date part of serials obtained from managed hosts
+      debug:
         var: serial_yymmdd
 
     - name: Set serial count (non first change of day, original serial < 9)

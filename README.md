@@ -186,9 +186,9 @@ molecule converge -- --skip-tags sethostname,permit-port53
 When testing 'cert' playbook additional flags need to be used to instruct playbook on what to be done.
 Note the desired Let's Encrypt directory to use needs to be specified as one of 'pebble', 'staging', 'production'.
 ```bash
-molecule converge -- --skip-tags sethostname,permit-port53 -e action=issue -e dir=staging
-molecule converge -- --skip-tags sethostname,permit-port53 -e action=revoke -e dir=staging
-molecule converge -- --skip-tags sethostname,permit-port53 -e action=check_account -e dir=staging
+molecule converge -- --skip-tags sethostname,permit-port53 -e action=issue -e dir=pebble
+molecule converge -- --skip-tags sethostname,permit-port53 -e action=revoke -e dir=pebble
+molecule converge -- --skip-tags sethostname,permit-port53 -e action=check_account -e dir=pebble
 molecule converge -- --skip-tags sethostname,permit-port53 -e action=check_expiry
 ```
 ### Lint Playbooks

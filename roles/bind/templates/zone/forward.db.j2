@@ -8,7 +8,9 @@ $TTL 1H
                                     3600)      ; minimum (1 hour)
 
 ; CAA Records
+{#
 {{ "{:<15} {:<9} {:<7} {:<8} {:<2} {:<10} {}".format(domain + ".", "3600", "IN", "CAA", "0", "issue", "\";\"") }}
+#}
 {{ "{:<15} {:<9} {:<7} {:<8} {:<2} {:<10} {}".format(domain + ".", "3600", "IN", "CAA", "0", "issuewild", "\"letsencrypt.org\"") }}
 {{ "{:<15} {:<9} {:<7} {:<8} {:<2} {:<10} {}".format(domain + ".", "3600", "IN", "CAA", "0", "iodef", "\"mailto:support@" + domain + "\"") }}
 
