@@ -1,7 +1,12 @@
 bindversion: "9.11"
 domain: "mydomain.com"
+# The keen eye would have noticed 172.17.0.0 is a private IP range in the configuration.
+# This is because Docker's default bridge network is using 172.17.0.0/16 and including this by default in configuration helps with running Molecule tests.
 ip_reverse: "0.17.172"
 ip_reverse_zone_file_prefix: "172.17.0"
+uselanip: true
+usegatewayip: true
+gatewayip: 10.0.0.1
 zone_records:
   uat:
     hostname: "uat"
@@ -12,9 +17,11 @@ zone_records:
   ns1:
     hostname: "ns1"
     hostip: "2"
+    lanip: 10.0.0.4
   ns2:
     hostname: "ns2"
     hostip: "3"
+    lanip: 10.0.1.4
   confluence:
     hostname: "confluence"
     hostip: "6"

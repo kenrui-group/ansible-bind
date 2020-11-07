@@ -20,6 +20,7 @@ Following variables are configurable in vars/main.yml.
 * BIND major version to install or upgraded to.
 * Domain name (eg mydomain.com).
 * Hostnames and IP addresses for DNS A and PTR entries.
+* Election to use local LAN IPs for DNS server and gateway for zone transfer and notify.
 
 DNS servers' IPs to be managed via the playbooks are configured in the inventory-dns file.
 
@@ -44,11 +45,89 @@ Reference following site for latest stable version.
 * https://kb.isc.org/docs/aa-00896
 
 # Example Usage 
-## Deployment To Production Servers
-### Both Master and Slave
+### Configuration
 #### Playbook 'bind'
+> roles/bind/vars/main.yml  
+> roles/bind/molecule/default/roles/test_bind/vars/main.yml
+
+Specify BIND version, domain, prefixes, and A records details.
+```yaml
+bindversion: "9.11"
+domain: "mydomain.com"
+# The keen eye would have noticed 172.17.0.0 is a private IP range in the configuration.
+# This is because Docker's default bridge network is using 172.17.0.0/16 and including this by default in configuration helps with running Molecule tests.
+ip_reverse: "0.17.172"
+ip_reverse_zone_file_prefix: "172.17.0"
+zone_records:
+  uat:
+    hostname: "uat"
+    hostip: "4"
+  www:
+    hostname: "www"
+    hostip: "5"
+  ns1:
+    hostname: "ns1"
+    hostip: "2"
+  ns2:
+    hostname: "ns2"
+    hostip: "3"
+  confluence:
+    hostname: "confluence"
+    hostip: "6"
+```
+
+Specify `uselanip: true` to elect to use `lanip` values in environments where zone transfer, notify, refresh, etc appear to originate from private IPs rather than public IPs.   
+
+```yaml
+uselanip: true
+zone_records:
+  ns1:
+    hostname: "ns1"
+    hostip: "2"
+    lanip: 10.0.0.4
+  ns2:
+    hostname: "ns2"
+    hostip: "3"
+    lanip: 10.0.1.4
+```
+
+Specify `usegatewayip: true` to elect to use `gatewayip` value in environments where zone transfer, notify, refresh, etc appear to originate from gateway IP rather than public IPs.  This may happen when DNS master notify slave on update or slave request from master via public IPs but firewall or gateway isn't able to perform hairpin NAT.
+```yaml
+usegatewayip: true
+gatewayip: 10.0.0.1
+```
+
+#### Playbook 'cert'
+> roles/cert/vars/main.yml  
+> roles/cert/molecule/default/roles/test_cert/vars/main.yml
+
+Specify organization details.
+```yaml
+domain: "mydomain.com"
+organization_name: "MyDomain"
+email_address: "support@mydomain.com"
+common_name: "mydomain.com"
+```
+
+Prepend domain name with `*.` if wildcard certificate is to be generated.
+```yaml
+# Note:  Pebble doesn't support wildcard domain
+common_name: "*.mydomain.com"
+```
+
+### Run Playbooks
+#### Playbook 'bind'
+Run playbook against all DNS servers.
 ```bash
 ansible-playbook -i inventory-dns bind.yml -k
+```
+Update eastcoast DNS servers only.
+```bash
+ansible-playbook -i inventory-dns bind.yml --limit eastcoast -k
+```
+Update westcoast DNS servers only.
+```bash
+ansible-playbook -i inventory-dns bind.yml --limit westcoast -k
 ```
 #### Playbook 'cert'
 Additional flags need to be used to instruct playbook on what to be done or which Let's Encrypt directory to use.
@@ -58,16 +137,7 @@ ansible-playbook -i inventory-dns cert.yml -e action=revoke -e dir=staging -k
 ansible-playbook -i inventory-dns cert.yml -e action=check_account -e dir=staging -k
 ansible-playbook -i inventory-dns cert.yml -e action=check_expiry -k
 ```
-### Master - ns1.mydomain.com
-#### Playbook 'bind'
-```bash
-ansible-playbook -i inventory-dns bind.yml --limit eastcoast -k
-```
-### Slave - ns2.mydomain.com
-#### Playbook 'bind'
-```bash
-ansible-playbook -i inventory-dns bind.yml --limit westcoast -k
-```
+
 
 # Code Testing
 Molecule testing is done via Github Actions and can run locally within WSL2 as well.

@@ -131,7 +131,7 @@
     # https://github.com/letsencrypt/pebble#authorization-reuse
     - name: Determine if authorization re-use is in effect
       set_fact:
-        authorization_status: "{{ challenge_returned.authorizations[ domain ].status }}"
+        authorization_status: "{{ challenge_returned.authorizations[ common_name ].status }}"
       when: challenge_returned is defined
   when:
     - type == "master"
@@ -155,15 +155,15 @@
 
     - name: Print challenge record name
       debug:
-        msg: "{{ challenge_returned.challenge_data[ domain ]['dns-01'].resource }}"
+        msg: "{{ challenge_returned.challenge_data[ common_name ]['dns-01'].resource }}"
 
     - name: Print challenge record value
       debug:
-        msg: "{{ challenge_returned.challenge_data[ domain ]['dns-01'].resource_value | regex_replace('^(.*)$', '\"\\1\"') }}"
+        msg: "{{ challenge_returned.challenge_data[ common_name ]['dns-01'].resource_value | regex_replace('^(.*)$', '\"\\1\"') }}"
 
     - name: Write challenge record value to file so Molecule test can validate
       copy:
-        content: "{{ challenge_returned.challenge_data[ domain ]['dns-01'].resource_value | regex_replace('^(.*)$', '\"\\1\"') }}"
+        content: "{{ challenge_returned.challenge_data[ common_name ]['dns-01'].resource_value | regex_replace('^(.*)$', '\"\\1\"') }}"
         dest: "{{ challenge_record_file }}"
         mode: '0644'
   when:
@@ -176,9 +176,9 @@
     - name: Add DNS challenge record
       nsupdate:
         server: "127.0.0.1"
-        record: "{{ challenge_returned.challenge_data[ domain ]['dns-01'].resource }}"
+        record: "{{ challenge_returned.challenge_data[ common_name ]['dns-01'].resource }}"
         type: "TXT"
-        value: "{{ challenge_returned.challenge_data[ domain ]['dns-01'].resource_value | regex_replace('^(.*)$', '\"\\1\"') }}"
+        value: "{{ challenge_returned.challenge_data[ common_name ]['dns-01'].resource_value | regex_replace('^(.*)$', '\"\\1\"') }}"
         zone: "{{ domain }}"
         state: present
       when:

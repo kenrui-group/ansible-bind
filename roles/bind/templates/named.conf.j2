@@ -17,13 +17,23 @@ options {
         secroots-file   "/var/named/data/named.secroots";
         recursing-file  "/var/named/data/named.recursing";
         allow-transfer {
-{#
-                {{ ip_ns1 }};
-                {{ ip_ns2 }};
-#}
+{% if uselanip is defined and uselanip is sameas true %}
+{{              zone_records["ns1"].lanip}};
+{{              zone_records["ns2"].lanip}};
+{% else %}
 {{              ip_reverse_zone_file_prefix + "." + zone_records["ns1"].hostip}};
 {{              ip_reverse_zone_file_prefix + "." + zone_records["ns2"].hostip}};
+{% endif %}
+{% if usegatewayip is defined and usegatewayip is sameas true %}
+{{              gatewayip}};
+{% endif %}
         };
+
+{% if type == 'slave' and usegatewayip is defined and usegatewayip is sameas true %}
+        allow-notify {
+{{              gatewayip}};
+        };
+{% endif %}
 
         allow-query {
                 any;

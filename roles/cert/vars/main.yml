@@ -1,6 +1,7 @@
 domain: "mydomain.com"
 organization_name: "MyDomain"
 email_address: "support@mydomain.com"
+# Note:  Pebble doesn't support wildcard domain
 common_name: "mydomain.com"
 # Continuous Integration - Pebble
 acme_directory_pebble: "https://172.17.0.4:14000/dir"
