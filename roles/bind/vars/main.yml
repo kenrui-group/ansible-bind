@@ -4,6 +4,9 @@ domain: "mydomain.com"
 # This is because Docker's default bridge network is using 172.17.0.0/16 and including this by default in configuration helps with running Molecule tests.
 ip_reverse: "0.17.172"
 ip_reverse_zone_file_prefix: "172.17.0"
+spf_value: "v=spf1 include:_spf.google.com ~all"
+dkim_prefix_selector: "mail"
+dkim_public_key: "v=DKIM1; k=rsa; p=MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAxNMFhiEv1MGpsDnBSKZb8I5WIlS4o88qtBKmkIMYaK5vSG1q+lhNzueFfLNAdPc4w/Srs1+CA+NacMin4QIMNRCgR3xeVrexE2o50ra4WEw5m74VjlmJbSTOF7wTDf66g1EBEuJ9kgLaCpVnzRuKSUefL/W5rxCTm+wT8xogZQJPcqN3VMmzZOdum5ruHjF5pEyk6t2VwBQJkTwlW9Ex1rhoPYFA7tzk1x7W+mUHoQemEOw34whEUg/jhUB712Vwtsk5DALYcz2bK6fD2sZQ5dXcD/mhnH/f91y/S5Os+7Xej+xXunpV5+V0bUdYhRC+7Zvoj8/T3t29VbIOgwz6yQIDAQAB"
 uselanip: true
 usegatewayip: true
 gatewayip: 10.0.0.1

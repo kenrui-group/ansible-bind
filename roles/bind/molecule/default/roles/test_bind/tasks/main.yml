@@ -6,4 +6,8 @@
 - name: Test DNS lookup
   include_tasks: testdnslookup.yml
   tags: testdnslookup
+
+- name: Test SPF and DKIM
+  include_tasks: testmailsecurity.yml
+  tags: testmailsecurity
 ...

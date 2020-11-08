@@ -9,9 +9,11 @@ The playbook is idempotent and permits a regular rebuild of DNS servers to achie
 * Install the latest [BIND](https://www.isc.org/bind/) available.
 * Update of zone records.
 * Rotate RNDC keys.
-* Get / revoke certificate from [Let's Encrypt](https://letsencrypt.org/) using DNS challenge.
+* Get / revoke certificate from [Let's Encrypt](https://letsencrypt.org/) using DNS challenge (wildcard certificate is supported).
 * Check certificate expiry status by comparing server date time and certificate start / end date time.
 * Test certificate issue / revoke using [Let's Encrypt Pebble](https://github.com/letsencrypt/pebble).
+* Optional use of local LAN IPs or gateway IPs for zone transfer or refresh between master and slave (gateway / firewall unable to do hairpin NAT)
+* Support inclusion of SPF and DKIM zone records.
 
 Playbook also comes with settings for testing using Molecule.
 
@@ -21,6 +23,8 @@ Following variables are configurable in vars/main.yml.
 * Domain name (eg mydomain.com).
 * Hostnames and IP addresses for DNS A and PTR entries.
 * Election to use local LAN IPs for DNS server and gateway for zone transfer and notify.
+* SPF TXT record.
+* DKIM selector and TXT record.
 
 DNS servers' IPs to be managed via the playbooks are configured in the inventory-dns file.
 
@@ -54,8 +58,6 @@ Specify BIND version, domain, prefixes, and A records details.
 ```yaml
 bindversion: "9.11"
 domain: "mydomain.com"
-# The keen eye would have noticed 172.17.0.0 is a private IP range in the configuration.
-# This is because Docker's default bridge network is using 172.17.0.0/16 and including this by default in configuration helps with running Molecule tests.
 ip_reverse: "0.17.172"
 ip_reverse_zone_file_prefix: "172.17.0"
 zone_records:
@@ -84,17 +86,24 @@ zone_records:
   ns1:
     hostname: "ns1"
     hostip: "2"
-    lanip: 10.0.0.4
+    lanip: 10.0.1.10
   ns2:
     hostname: "ns2"
     hostip: "3"
-    lanip: 10.0.1.4
+    lanip: 10.0.2.10
 ```
 
 Specify `usegatewayip: true` to elect to use `gatewayip` value in environments where zone transfer, notify, refresh, etc appear to originate from gateway IP rather than public IPs.  This may happen when DNS master notify slave on update or slave request from master via public IPs but firewall or gateway isn't able to perform hairpin NAT.
 ```yaml
 usegatewayip: true
-gatewayip: 10.0.0.1
+gatewayip: 192.168.50.1
+```
+
+Specify SPF and DKIM details.
+```yaml
+spf_value: "v=spf1 include:_spf.google.com ~all"
+dkim_prefix_selector: "mail"
+dkim_public_key: "v=DKIM1; k=rsa; p=MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAxNMFhiEv1MGpsDnBSKZb8I5WIlS4o88qtBKmkIMYaK5vSG1q+lhNzueFfLNAdPc4w/Srs1+CA+NacMin4QIMNRCgR3xeVrexE2o50ra4WEw5m74VjlmJbSTOF7wTDf66g1EBEuJ9kgLaCpVnzRuKSUefL/W5rxCTm+wT8xogZQJPcqN3VMmzZOdum5ruHjF5pEyk6t2VwBQJkTwlW9Ex1rhoPYFA7tzk1x7W+mUHoQemEOw34whEUg/jhUB712Vwtsk5DALYcz2bK6fD2sZQ5dXcD/mhnH/f91y/S5Os+7Xej+xXunpV5+V0bUdYhRC+7Zvoj8/T3t29VbIOgwz6yQIDAQAB"
 ```
 
 #### Playbook 'cert'
@@ -111,7 +120,6 @@ common_name: "mydomain.com"
 
 Prepend domain name with `*.` if wildcard certificate is to be generated.
 ```yaml
-# Note:  Pebble doesn't support wildcard domain
 common_name: "*.mydomain.com"
 ```
 

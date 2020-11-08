@@ -35,6 +35,24 @@ $TTL 1H
 @               3600    IN      MX      5       ALT2.ASPMX.L.GOOGLE.COM.
 @               3600    IN      MX      10      ALT3.ASPMX.L.GOOGLE.COM.
 @               3600    IN      MX      10      ALT4.ASPMX.L.GOOGLE.COM.
+{{      "{:<15} {:<9} {:<7} {:<8} {}".format("@", "600", "IN", "TXT", '"' ~ spf_value ~ '"') }}
+{% set dkim_public_key_length = dkim_public_key | length %}
+{% set dkim_public_key_chucks = dkim_public_key_length / 255 %}
+{% set dkim_public_key_chucks_rounded = dkim_public_key_chucks | round(0, 'ceil') | int %}
+{% set dkim_record_name = dkim_prefix_selector ~ "._domainkey" %}
+{% set dkim_public_key_concat = '' %}
+{% set dkim_public_key_concat_list = [] %}
+{% for chunk in range(dkim_public_key_chucks_rounded) %}
+  {% set startpos = chunk * 255 | int %}
+  {% set endpos = startpos + 254 | int %}
+  {% if startpos > 0 %}
+    {% set startpos = startpos - 1 %}
+  {% endif %}
+  {% set dkim_public_key_concat = '"' ~ dkim_public_key[startpos:endpos] ~ '"' %}
+  {{ dkim_public_key_concat_list.append(dkim_public_key_concat) }}
+{% endfor %}
+{% set dkim_public_key_list = dkim_public_key_concat_list | join(" ") %}
+{{      "{:<15} {:<9} {:<7} {:<8} {}".format(dkim_record_name, "600", "IN", "TXT", dkim_public_key_list) }}
 
 ; NS Records
 @               3600    IN      NS      ns1

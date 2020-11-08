@@ -1,0 +1,31 @@
+---
+- name: Given role 'bind' has been applied
+  block:
+    - name: When requesting SPF record
+      command:
+        cmd: "dig @localhost +short {{ domain }} TXT"
+      register: dig_spf_results
+      changed_when: false
+
+    - name: Assert correct SPF record retrieved
+      assert:
+        that:
+          - dig_spf_results.stdout_lines | length > 0
+          - dig_spf_results.stdout == '"' + spf_value + '"'
+
+    - name: When requesting DKIM record
+      command:
+        cmd: "dig @localhost +short {{ dkim_prefix_selector + '._domainkey.' + domain }} TXT"
+      register: dig_dkim_results
+      changed_when: false
+
+    - name: Concatenate DKIM key if it's split due to greater than 255 characters, assuming it's been separated to only two blocks
+      set_fact:
+        retrieved_dkim_key: "{{ dig_dkim_results.stdout | regex_replace('^\"(.*?)\" \"(.*?)\"$', '\\1\\2') }}"
+
+    - name: Assert correct DKIM record retrieved
+      assert:
+        that:
+          - dig_dkim_results.stdout_lines | length > 0
+          - retrieved_dkim_key == dkim_public_key
+...
