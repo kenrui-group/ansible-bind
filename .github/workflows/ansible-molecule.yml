@@ -25,6 +25,7 @@ jobs:
           sudo apt install python3-pip
           sudo apt install make
           sudo apt install coreutils
+          sudo apt install python3-jmespath
           sudo pip3 install packaging
           sudo pip3 install setuptools
       - name: Install Ansible
