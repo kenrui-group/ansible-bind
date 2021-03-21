@@ -12,5 +12,7 @@
     - name: Print account status
       debug:
         var: account_data
-  when: type == "master"
+  when:
+    - type is defined
+    - type == "master"
 ...

@@ -4,12 +4,16 @@
     - name: Set hostname for master
       hostname:
         name: "ns1.{{ domain }}"
-      when: type == "master"
+      when:
+        - type is defined
+        - type == "master"
 
     - name: Set hostname for slave
       hostname:
         name: "ns2.{{ domain }}"
-      when: type == "slave"
+      when:
+        - type is defined
+        - type == "slave"
   tags: sethostname
 
 - name: Check if BIND is running

@@ -22,10 +22,14 @@
         - certfile_stat.stat.isreg
         - certificate_enddate is defined
 
+    # https://stackoverflow.com/questions/44546154/jmespathtypeerror-when-using-json-query-filter-in-ansible-with-starts-with
     - name: Extract start and end dates
       set_fact:
-        start_date: "{{ certificate_enddate.stdout_lines | map('regex_search', 'notBefore.*') | select('string') | list | regex_replace('notBefore=(?P<startDate>.*)', '\\g<startDate>') }}"
-        end_date: "{{ certificate_enddate.stdout_lines | map('regex_search', 'notAfter.*') | select('string') | list | regex_replace('notAfter=(?P<endDate>.*)', '\\g<endDate>') }}"
+        start_date: "{{ certificate_enddate.stdout_lines | to_json | from_json | json_query(START_DATE_QUERY) | join() | regex_replace('notBefore=(?P<startDate>.*)', '\\g<startDate>') }}"
+        end_date: "{{ certificate_enddate.stdout_lines | to_json | from_json | json_query(END_DATE_QUERY) | join() | regex_replace('notAfter=(?P<endDate>.*)', '\\g<endDate>') }}"
+      vars:
+        START_DATE_QUERY: "[?contains(@, 'notBefore') == `true`]"
+        END_DATE_QUERY: "[?contains(@, 'notAfter') == `true`]"
       when:
         - certfile_stat.stat.exists
         - certfile_stat.stat.isreg
@@ -34,7 +38,7 @@
 
     - name: Print certificate start and end dates
       debug:
-        msg: "Certificate start date: {{ start_date[0] }} and end date: {{ end_date[0] }}"
+        msg: "Certificate start date: {{ start_date }} and end date: {{ end_date }}"
 
     - name: Get server date time
       shell:
@@ -49,14 +53,16 @@
       debug:
         msg: "Certificate is still valid."
       when:
-        - (server_date_time.stdout | to_datetime) >= (start_date[0] | to_datetime('%b %d %H:%M:%S %Y %Z'))
-        - (server_date_time.stdout | to_datetime) <= (end_date[0] | to_datetime('%b %d %H:%M:%S %Y %Z'))
+        - (server_date_time.stdout | to_datetime) >= (start_date | to_datetime('%b %d %H:%M:%S %Y %Z'))
+        - (server_date_time.stdout | to_datetime) <= (end_date | to_datetime('%b %d %H:%M:%S %Y %Z'))
 
     - name: Print if certificate is not valid
       debug:
         msg: "Certificate is not valid."
-      when:
-        - (server_date_time.stdout | to_datetime) < (start_date[0] | to_datetime('%b %d %H:%M:%S %Y %Z'))
-        - (server_date_time.stdout | to_datetime) > (end_date[0] | to_datetime('%b %d %H:%M:%S %Y %Z'))
-  when: type == "master"
+      when: >
+        ((server_date_time.stdout | to_datetime) < (start_date | to_datetime('%b %d %H:%M:%S %Y %Z'))) or
+        ((server_date_time.stdout | to_datetime) > (end_date | to_datetime('%b %d %H:%M:%S %Y %Z')))
+  when:
+    - type is defined
+    - type == "master"
 ...

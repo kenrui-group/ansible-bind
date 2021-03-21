@@ -31,5 +31,7 @@
         - revoke_status is defined
         - revoke_status.changed | bool == true
         - revoke_status.failed | bool == false
-  when: type == "master"
+  when:
+    - type is defined
+    - type == "master"
 ...
